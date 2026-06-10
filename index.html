@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equity, Funding Rounds & Exit Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#ffffff; --ink:#1a2433; --ink2:#5a6b82; --line:#e3e8ef;
+  --brand:#16365c; --brand2:#2563eb; --accent:#0e7c66; --warn:#b45309; --danger:#b91c1c;
+  --founder:#16365c; --esop:#0e7c66;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+header{background:var(--brand);color:#fff;padding:22px 28px}
+header h1{font-size:20px;font-weight:600;letter-spacing:.2px}
+header p{color:#c6d4e6;font-size:13px;margin-top:4px;max-width:880px}
+.wrap{display:grid;grid-template-columns:430px 1fr;gap:20px;padding:20px 28px;align-items:start}
+@media(max-width:1100px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 18px 16px;margin-bottom:16px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--brand);margin-bottom:12px;font-weight:700}
+.card h3{font-size:13px;font-weight:600;color:var(--ink);margin:10px 0 6px}
+label{display:block;font-size:11.5px;color:var(--ink2);margin-bottom:3px;font-weight:600}
+input[type=text],input[type=number],input[type=date],select{
+  width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font-size:13.5px;color:var(--ink);background:#fff}
+input:focus,select:focus{outline:2px solid #bfdbfe;border-color:var(--brand2)}
+.row{display:flex;gap:10px;margin-bottom:10px}
+.row>div{flex:1}
+.btn{display:inline-block;border:none;border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-primary{background:var(--brand2);color:#fff}
+.btn-soft{background:#e8eef7;color:var(--brand)}
+.btn-x{background:none;color:var(--danger);font-size:12px;font-weight:600;cursor:pointer;border:none;padding:2px 6px}
+.btn:hover{filter:brightness(.95)}
+.founder-row,.scen-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:8px}
+.founder-row .nm{flex:2}.founder-row .pc{flex:1}
+.round-card{border:1px solid var(--line);border-left:4px solid var(--brand2);border-radius:8px;padding:12px;margin-bottom:10px;background:#fbfcfe}
+.round-card.conv{border-left-color:var(--accent)}
+.round-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.round-head .tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:10px;background:#dbeafe;color:var(--brand2)}
+.round-card.conv .tag{background:#d1fae5;color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.check{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2);font-weight:600}
+.check input{width:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--ink2);text-align:right;padding:7px 8px;border-bottom:2px solid var(--line);font-weight:700}
+th:first-child,td:first-child{text-align:left}
+td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+tr.total td{font-weight:700;border-top:2px solid var(--line)}
+tr.sub td{color:var(--ink2)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpi .v{font-size:20px;font-weight:700;color:var(--brand);margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);font-weight:700}
+.kpi .s{font-size:11.5px;color:var(--ink2);margin-top:2px}
+.chartbox{position:relative;height:300px;margin-top:6px}
+.chartbox.tall{height:340px}
+.note{font-size:12px;color:var(--ink2);margin-top:8px}
+.err{background:#fef2f2;border:1px solid #fecaca;color:var(--danger);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;display:none}
+.range-wrap{display:flex;align-items:center;gap:12px;margin:6px 0 4px}
+input[type=range]{flex:1;accent-color:var(--brand2)}
+.range-val{font-weight:700;color:var(--brand);min-width:110px;text-align:right;font-variant-numeric:tabular-nums}
+.scen-row input{flex:1}
+.scen-row .lbl{flex:0 0 90px;font-size:12px;font-weight:700;color:var(--ink2);padding-bottom:8px}
+.pill{font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px}
+.pill.f{background:#e3eaf4;color:var(--founder)}
+.pill.e{background:#d6f0ea;color:var(--esop)}
+.pill.i{background:#e0e7ff;color:#4338ca}
+footer{padding:14px 28px 28px;color:var(--ink2);font-size:11.5px;max-width:1100px}
+@media print{.inputs,header p,.btn{display:none}.wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Equity, Funding Rounds & Exit Simulator</h1>
+  <p>Model founder and option-pool dilution across convertible rounds (with valuation cap, discount and interest) and priced rounds (with liquidation preferences), and simulate the exit distribution waterfall under different scenarios. Fully generic: configure it for any company.</p>
+</header>
+
+<div class="wrap">
+<!-- ====================== INPUTS ====================== -->
+<div class="inputs">
+
+  <div class="card">
+    <h2>1 · Company & Founders</h2>
+    <div class="row">
+      <div style="flex:2"><label>Company name (optional)</label><input type="text" id="coName" placeholder="My Company Inc."></div>
+      <div><label>Currency</label><select id="currency"><option value="USD">US$ (USD)</option><option value="BRL">R$ (BRL)</option><option value="EUR">€ (EUR)</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>Founding date</label><input type="date" id="foundDate" value="2024-01-01"></div>
+      <div><label>Initial shares</label><input type="number" id="startShares" value="10000000" step="100000" min="1"></div>
+    </div>
+    <h3>Founders (% of initial capital — must total 100%)</h3>
+    <div id="foundersList"></div>
+    <button class="btn btn-soft" onclick="addFounder()">+ Add founder</button>
+    <div class="row" style="margin-top:12px">
+      <div><label>Option pool / ESOP (% after creation)</label><input type="number" id="esopPct" value="10" step="0.5" min="0" max="40"></div>
+      <div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 · Funding Rounds</h2>
+    <div id="roundsList"></div>
+    <button class="btn btn-soft" onclick="addRound('conv')">+ Convertible round (Seed/SAFE)</button>
+    <button class="btn btn-soft" onclick="addRound('priced')" style="margin-left:6px">+ Priced round (Series)</button>
+    <p class="note">Convertibles convert at the next priced round (or at exit), at the lower of the discounted price and the price implied by the valuation cap, with interest accrued pro rata.</p>
+  </div>
+
+  <div class="card">
+    <h2>3 · Exit</h2>
+    <div class="row">
+      <div><label>Exit date</label><input type="date" id="exitDate" value="2031-06-30"></div>
+      <div><label>Exit valuation (base case)</label><input type="number" id="exitVal" value="300000000" step="1000000" min="0"></div>
+    </div>
+    <label>Quick valuation adjustment</label>
+    <div class="range-wrap">
+      <input type="range" id="exitRange" min="0" max="1000000000" step="5000000" value="300000000">
+      <span class="range-val" id="exitRangeVal"></span>
+    </div>
+    <h3>Alternative exit scenarios</h3>
+    <div class="scen-row"><span class="lbl">Downside</span><input type="number" id="scenLow" step="1000000" min="0"></div>
+    <div class="scen-row"><span class="lbl">Base</span><input type="number" id="scenBase" step="1000000" min="0"></div>
+    <div class="scen-row"><span class="lbl">Upside</span><input type="number" id="scenHigh" step="1000000" min="0"></div>
+    <p class="note">The three scenarios feed the comparison table. The slider and the valuation field drive the detailed waterfall view.</p>
+  </div>
+
+</div>
+
+<!-- ====================== RESULTS ====================== -->
+<div class="results">
+  <div class="err" id="errBox"></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <h2>Cap Table by Round (% fully diluted)</h2>
+    <div style="overflow-x:auto"><table id="capTable"></table></div>
+    <div class="chartbox tall"><canvas id="chartStack"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2 id="wfTitle">Exit Waterfall</h2>
+    <div style="overflow-x:auto"><table id="exitTable"></table></div>
+    <p class="note">Non-participating investors receive the greater of their liquidation preference and their as-converted equity value. Participating investors receive the preference plus their pro-rata share of the residual. If the exit does not cover total preferences, they are paid pro rata.</p>
+  </div>
+
+  <div class="card">
+    <h2>Exit Scenario Comparison</h2>
+    <div style="overflow-x:auto"><table id="scenTable"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Sensitivity — Proceeds × Exit Valuation</h2>
+    <div class="chartbox tall"><canvas id="chartSens"></canvas></div>
+    <p class="note">Kinks in the curves mark the points where investors stop exercising their liquidation preference and convert to equity instead.</p>
+  </div>
+
+  <div class="card">
+    <h2>Composition at Exit</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="chartbox"><canvas id="chartDonut"></canvas></div>
+      <div class="chartbox"><canvas id="chartProceeds"></canvas></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<footer>
+Simulation tool for planning and discussion purposes. Results depend on the assumptions entered and simplify real legal terms (anti-dilution, pro-rata rights, vesting, debt, earn-outs). This is not legal or investment advice.
+</footer>
+
+<script>
+/* ============================================================
+   STATE
+============================================================ */
+let founders = [
+  {id:'F1', name:'Founder 1', pct:60},
+  {id:'F2', name:'Founder 2', pct:40}
+];
+let rounds = [
+  {id:'R1', kind:'conv',   name:'Seed (convertible note)', date:'2025-03-01', amount:2000000, cap:18000000, discount:20, interest:6},
+  {id:'R2', kind:'priced', name:'Series A', date:'2026-06-01', amount:12000000, preMoney:48000000, pref:1, participating:false},
+  {id:'R3', kind:'priced', name:'Series B', date:'2028-03-01', amount:35000000, preMoney:140000000, pref:1, participating:false}
+];
+let nextId = 4;
+let charts = {};
+
+const PALETTE = ['#2563eb','#7c3aed','#db2777','#ea580c','#0891b2','#65a30d','#9333ea','#0d9488'];
+const FCOLORS = ['#16365c','#27568c','#3b76b8','#5b93cf','#7fb0e0'];
+
+/* ============================================================
+   CALCULATION ENGINE
+============================================================ */
+function daysBetween(d1, d2){ return (new Date(d2) - new Date(d1)) / 86400000; }
+
+function compute(state){
+  const out = {stages:[], holders:{}, error:null};
+  const sumPct = state.founders.reduce((s,f)=>s+(+f.pct||0),0);
+  if (Math.abs(sumPct-100) > 0.01) out.warning = `Founder stakes total ${sumPct.toFixed(1)}% (expected 100%). Values were normalized.`;
+
+  // Founding
+  let holders = {};
+  state.founders.forEach((f,i)=>{
+    const pct = sumPct>0 ? (+f.pct||0)/sumPct*100 : 0;
+    holders[f.id] = {id:f.id, name:f.name||('Founder '+(i+1)), type:'founder', shares: pct/100*state.startShares, color:FCOLORS[i%FCOLORS.length]};
+  });
+  let total = state.startShares;
+  out.stages.push(snapshot('Founding', holders, total, null, null));
+
+  // ESOP
+  if (state.esopPct > 0){
+    const ns = total/(1-state.esopPct/100) - total;
+    holders['ESOP'] = {id:'ESOP', name:'ESOP Pool', type:'esop', shares:ns, color:'#0e7c66'};
+    total += ns;
+    out.stages.push(snapshot('Post-ESOP', holders, total, null, null));
+  }
+
+  // Rounds in chronological order
+  const sorted = [...state.rounds].sort((a,b)=> new Date(a.date)-new Date(b.date));
+  let pendingConv = [];
+  let totalRaised = 0;
+  let ci = 0;
+
+  for (const r of sorted){
+    if (r.kind === 'conv'){
+      pendingConv.push(r);
+      totalRaised += +r.amount;
+      continue;
+    }
+    // priced round
+    const S0 = total;
+    if (+r.preMoney <= 0){ out.error = `Round "${r.name}": pre-money must be greater than zero.`; return out; }
+    const pps = +r.preMoney / S0;
+    let added = 0;
+    for (const c of pendingConv){
+      const yrs = Math.max(daysBetween(c.date, r.date),0)/365;
+      const principal = +c.amount;
+      const interest = principal * (Math.pow(1+(+c.interest||0)/100, yrs) - 1);
+      const discPrice = pps * (1-(+c.discount||0)/100);
+      const capPrice = (+c.cap||0) > 0 ? +c.cap/S0 : Infinity;
+      const convPrice = Math.max(Math.min(discPrice, capPrice), 1e-12);
+      const shares = (principal+interest)/convPrice;
+      holders[c.id] = {id:c.id, name:c.name, type:'investor', shares,
+        invested:principal, date:c.date, color:PALETTE[ci++ % PALETTE.length],
+        liqAmount:(principal+interest)*(+r.pref||1), participating:!!r.participating,
+        info:`converted at ${fmtMoney(convPrice,4)}/share`};
+      added += shares;
+    }
+    pendingConv = [];
+    const newShares = +r.amount/pps;
+    holders[r.id] = {id:r.id, name:r.name, type:'investor', shares:newShares,
+      invested:+r.amount, date:r.date, color:PALETTE[ci++ % PALETTE.length],
+      liqAmount:+r.amount*(+r.pref||1), participating:!!r.participating};
+    added += newShares;
+    total = S0 + added;
+    totalRaised += +r.amount;
+    out.stages.push(snapshot(r.name, holders, total, pps, total*pps));
+  }
+
+  // Convertibles with no subsequent priced round: convert at exit
+  if (pendingConv.length){
+    const S0 = total;
+    let added = 0;
+    for (const c of pendingConv){
+      const yrs = Math.max(daysBetween(c.date, state.exitDate),0)/365;
+      const principal = +c.amount;
+      const interest = principal * (Math.pow(1+(+c.interest||0)/100, yrs) - 1);
+      const impliedPrice = ((state.exitVal - principal - interest)/S0) * (1-(+c.discount||0)/100);
+      const capPrice = (+c.cap||0) > 0 ? +c.cap/S0 : Infinity;
+      const convPrice = Math.max(Math.min(impliedPrice>0?impliedPrice:Infinity, capPrice), 1e-12);
+      const shares = isFinite(convPrice) ? (principal+interest)/convPrice : 0;
+      holders[c.id] = {id:c.id, name:c.name+' (converted at exit)', type:'investor', shares,
+        invested:principal, date:c.date, color:PALETTE[ci++ % PALETTE.length],
+        liqAmount:principal+interest, participating:false};
+      added += shares;
+    }
+    total = S0 + added;
+    out.stages.push(snapshot('Converted at exit', holders, total, null, null));
+  }
+
+  out.holders = holders;
+  out.totalShares = total;
+  out.totalRaised = totalRaised;
+  return out;
+}
+
+function snapshot(label, holders, total, pps, postMoney){
+  const h = {};
+  for (const k in holders) h[k] = {...holders[k], pct: holders[k].shares/total*100};
+  return {label, holders:h, totalShares:total, pps, postMoney};
+}
+
+/* Exit waterfall over the final stage */
+function waterfall(model, exitVal, exitDate){
+  const last = model.stages[model.stages.length-1];
+  const hs = {};
+  for (const k in last.holders) hs[k] = {...last.holders[k]};
+
+  const investors = Object.values(hs).filter(h=>h.type==='investor');
+  const totalLiq = investors.reduce((s,h)=>s+(h.liqAmount||0),0);
+
+  // pro-rate preferences if exit < total preferences
+  investors.forEach(h=>{
+    const share = totalLiq>0 ? (h.liqAmount||0)/totalLiq : 0;
+    h.liqResult = Math.min(share*exitVal, h.liqAmount||0);
+  });
+
+  // participating investors always take their preference (and keep their stake in the residual);
+  // non-participating investors decide iteratively between preference and conversion,
+  // since each decision changes the residual available to the others.
+  investors.forEach(h=>{ h.takesPref = !!h.participating; });
+  const stakes = () => {
+    const g = investors.filter(h=>h.takesPref).reduce((s,h)=>s+h.liqResult,0);
+    let remPct = 0;
+    for (const k in hs){
+      const h = hs[k];
+      const excluded = h.type==='investor' && h.takesPref && !h.participating;
+      h._p = excluded ? 0 : h.pct;
+      remPct += h._p;
+    }
+    return {g, remPct, residual: Math.max(exitVal-g,0)};
+  };
+  let changed = true, guard = 0;
+  while (changed && guard++ < 50){
+    changed = false;
+    const {remPct, residual} = stakes();
+    for (const h of investors){
+      if (h.takesPref) continue;
+      const pctR = remPct>0 ? h.pct/remPct*100 : 0;
+      if ((h.liqResult||0) > pctR/100*residual){ h.takesPref = true; changed = true; }
+    }
+  }
+
+  const {g, remPct, residual} = stakes();
+  for (const k in hs){
+    const h = hs[k];
+    const pctR = remPct>0 ? h._p/remPct*100 : 0;
+    if (h.type==='investor'){
+      if (h.participating) h.exitValue = h.liqResult + pctR/100*residual;
+      else if (h.takesPref) h.exitValue = h.liqResult;
+      else h.exitValue = pctR/100*residual;
+      h.multiple = h.invested>0 ? h.exitValue/h.invested : null;
+      const yrs = Math.max(daysBetween(h.date, exitDate),0)/365;
+      h.irr = (h.multiple>0 && yrs>0.05) ? (Math.pow(h.multiple, 1/yrs)-1)*100 : null;
+    } else {
+      h.exitValue = Math.max(pctR/100*residual, 0);
+    }
+    h.pctFinal = pctR;
+  }
+  return {holders:hs, totalShares:last.totalShares, prefsPaid:g, residual};
+}
+
+/* ============================================================
+   FORMATTING
+============================================================ */
+function curSymbol(){ return {BRL:'R$',USD:'US$',EUR:'€'}[document.getElementById('currency').value]; }
+function fmtMoney(v, dec){
+  if (v===null||v===undefined||isNaN(v)) return '—';
+  const s = curSymbol();
+  if (dec!==undefined) return s+' '+v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+  const a = Math.abs(v);
+  if (a>=1e9) return s+' '+(v/1e9).toLocaleString('en-US',{maximumFractionDigits:2})+'B';
+  if (a>=1e6) return s+' '+(v/1e6).toLocaleString('en-US',{maximumFractionDigits:1})+'M';
+  if (a>=1e3) return s+' '+(v/1e3).toLocaleString('en-US',{maximumFractionDigits:0})+'K';
+  return s+' '+v.toLocaleString('en-US',{maximumFractionDigits:0});
+}
+function fmtPct(v,d=1){ return (v===null||isNaN(v)) ? '—' : v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})+'%'; }
+function fmtNum(v){ return v.toLocaleString('en-US',{maximumFractionDigits:0}); }
+function fmtX(v){ return (v===null||isNaN(v)) ? '—' : v.toLocaleString('en-US',{maximumFractionDigits:1})+'×'; }
+
+/* ============================================================
+   UI — INPUTS
+============================================================ */
+function renderFounders(){
+  const el = document.getElementById('foundersList');
+  el.innerHTML = founders.map((f,i)=>`
+    <div class="founder-row">
+      <div class="nm"><label>Name</label><input type="text" value="${esc(f.name)}" onchange="founders[${i}].name=this.value;recalc()"></div>
+      <div class="pc"><label>%</label><input type="number" value="${f.pct}" step="0.5" min="0" max="100" onchange="founders[${i}].pct=+this.value;recalc()"></div>
+      ${founders.length>1?`<button class="btn-x" onclick="founders.splice(${i},1);renderFounders();recalc()">remove</button>`:''}
+    </div>`).join('');
+}
+function addFounder(){
+  founders.push({id:'F'+(nextId++), name:'Founder '+(founders.length+1), pct:0});
+  renderFounders(); recalc();
+}
+
+function renderRounds(){
+  const el = document.getElementById('roundsList');
+  el.innerHTML = rounds.map((r,i)=>{
+    if (r.kind==='conv') return `
+    <div class="round-card conv">
+      <div class="round-head"><span class="tag">Convertible</span><button class="btn-x" onclick="rounds.splice(${i},1);renderRounds();recalc()">remove</button></div>
+      <div class="grid2">
+        <div><label>Name</label><input type="text" value="${esc(r.name)}" onchange="rounds[${i}].name=this.value;recalc()"></div>
+        <div><label>Date</label><input type="date" value="${r.date}" onchange="rounds[${i}].date=this.value;recalc()"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Amount raised</label><input type="number" value="${r.amount}" step="100000" min="0" onchange="rounds[${i}].amount=+this.value;recalc()"></div>
+        <div><label>Valuation cap</label><input type="number" value="${r.cap}" step="1000000" min="0" onchange="rounds[${i}].cap=+this.value;recalc()"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Discount (%)</label><input type="number" value="${r.discount}" step="1" min="0" max="60" onchange="rounds[${i}].discount=+this.value;recalc()"></div>
+        <div><label>Interest (% p.a.)</label><input type="number" value="${r.interest}" step="0.5" min="0" onchange="rounds[${i}].interest=+this.value;recalc()"></div>
+      </div>
+    </div>`;
+    return `
+    <div class="round-card">
+      <div class="round-head"><span class="tag">Priced</span><button class="btn-x" onclick="rounds.splice(${i},1);renderRounds();recalc()">remove</button></div>
+      <div class="grid2">
+        <div><label>Name</label><input type="text" value="${esc(r.name)}" onchange="rounds[${i}].name=this.value;recalc()"></div>
+        <div><label>Date</label><input type="date" value="${r.date}" onchange="rounds[${i}].date=this.value;recalc()"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Amount raised</label><input type="number" value="${r.amount}" step="500000" min="0" onchange="rounds[${i}].amount=+this.value;recalc()"></div>
+        <div><label>Pre-money valuation</label><input type="number" value="${r.preMoney}" step="1000000" min="0" onchange="rounds[${i}].preMoney=+this.value;recalc()"></div>
+      </div>
+      <div class="grid2">
+        <div><label>Liquidation pref. (×)</label><input type="number" value="${r.pref}" step="0.5" min="0" max="5" onchange="rounds[${i}].pref=+this.value;recalc()"></div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:6px"><label class="check"><input type="checkbox" ${r.participating?'checked':''} onchange="rounds[${i}].participating=this.checked;recalc()"> Participating</label></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function addRound(kind){
+  const n = rounds.filter(r=>r.kind===kind).length+1;
+  const lastDate = rounds.length ? rounds[rounds.length-1].date : document.getElementById('foundDate').value;
+  const d = new Date(lastDate); d.setFullYear(d.getFullYear()+1);
+  const iso = d.toISOString().slice(0,10);
+  if (kind==='conv') rounds.push({id:'R'+(nextId++), kind:'conv', name:'Convertible '+n, date:iso, amount:1000000, cap:15000000, discount:20, interest:6});
+  else rounds.push({id:'R'+(nextId++), kind:'priced', name:'Series '+String.fromCharCode(64+rounds.filter(r=>r.kind==='priced').length+1), date:iso, amount:10000000, preMoney:50000000, pref:1, participating:false});
+  renderRounds(); recalc();
+}
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+/* ============================================================
+   UI — RESULTS
+============================================================ */
+function getState(){
+  return {
+    startShares: +document.getElementById('startShares').value || 10000000,
+    founders, esopPct: +document.getElementById('esopPct').value || 0,
+    rounds,
+    exitDate: document.getElementById('exitDate').value,
+    exitVal: +document.getElementById('exitVal').value || 0
+  };
+}
+
+function recalc(){
+  const st = getState();
+  const model = compute(st);
+  const errBox = document.getElementById('errBox');
+  if (model.error){ errBox.style.display='block'; errBox.textContent = model.error; return; }
+  if (model.warning){ errBox.style.display='block'; errBox.textContent = model.warning; }
+  else errBox.style.display='none';
+
+  const wf = waterfall(model, st.exitVal, st.exitDate);
+  renderKpis(st, model, wf);
+  renderCapTable(model);
+  renderExitTable(st, model, wf);
+  renderScenarios(st, model);
+  renderCharts(st, model, wf);
+  document.getElementById('exitRangeVal').textContent = fmtMoney(st.exitVal);
+  const coName = document.getElementById('coName').value.trim();
+  document.getElementById('wfTitle').textContent = 'Exit Waterfall' + (coName? ' — '+coName : '') + ' · ' + fmtMoney(st.exitVal);
+}
+
+function renderKpis(st, model, wf){
+  const founderIds = founders.map(f=>f.id);
+  const last = model.stages[model.stages.length-1];
+  const fPctEnd = founderIds.reduce((s,id)=> s + (last.holders[id]?last.holders[id].pct:0), 0);
+  const fProceeds = founderIds.reduce((s,id)=> s + (wf.holders[id]?wf.holders[id].exitValue:0), 0);
+  const esopV = wf.holders['ESOP'] ? wf.holders['ESOP'].exitValue : 0;
+  const invV = Object.values(wf.holders).filter(h=>h.type==='investor').reduce((s,h)=>s+h.exitValue,0);
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="l">Total raised</div><div class="v">${fmtMoney(model.totalRaised)}</div><div class="s">${rounds.length} round(s)</div></div>
+    <div class="kpi"><div class="l">Founders at exit</div><div class="v">${fmtPct(fPctEnd)}</div><div class="s">from 100% at founding</div></div>
+    <div class="kpi"><div class="l">Founder proceeds</div><div class="v">${fmtMoney(fProceeds)}</div><div class="s">at ${fmtMoney(st.exitVal)} exit</div></div>
+    <div class="kpi"><div class="l">Investor proceeds</div><div class="v">${fmtMoney(invV)}</div><div class="s">incl. preferences</div></div>
+    <div class="kpi"><div class="l">ESOP pool</div><div class="v">${fmtMoney(esopV)}</div><div class="s">${last.holders['ESOP']?fmtPct(last.holders['ESOP'].pct):'—'} fully diluted</div></div>`;
+}
+
+function holderOrder(model){
+  const last = model.stages[model.stages.length-1];
+  const ids = Object.keys(last.holders);
+  const rank = h => h.type==='founder'?0 : h.type==='esop'?1 : 2;
+  return ids.sort((a,b)=> rank(last.holders[a])-rank(last.holders[b]));
+}
+
+function renderCapTable(model){
+  const ids = holderOrder(model);
+  const last = model.stages[model.stages.length-1];
+  let html = '<tr><th>Shareholder</th>' + model.stages.map(s=>`<th>${esc(s.label)}</th>`).join('') + '<th>Shares (final)</th></tr>';
+  for (const id of ids){
+    const h = last.holders[id];
+    const pill = h.type==='founder'?'<span class="pill f">F</span>':h.type==='esop'?'<span class="pill e">E</span>':'<span class="pill i">I</span>';
+    html += `<tr><td>${pill} ${esc(h.name)}</td>` +
+      model.stages.map(s=> `<td>${s.holders[id]? fmtPct(s.holders[id].pct) : '—'}</td>`).join('') +
+      `<td>${fmtNum(h.shares)}</td></tr>`;
+  }
+  html += `<tr class="sub"><td>Price per share</td>` + model.stages.map(s=>`<td>${s.pps?fmtMoney(s.pps,2):'—'}</td>`).join('') + '<td></td></tr>';
+  html += `<tr class="sub"><td>Post-money</td>` + model.stages.map(s=>`<td>${s.postMoney?fmtMoney(s.postMoney):'—'}</td>`).join('') + '<td></td></tr>';
+  html += `<tr class="total"><td>Total</td>` + model.stages.map(()=>'<td>100%</td>').join('') + `<td>${fmtNum(last.totalShares)}</td></tr>`;
+  document.getElementById('capTable').innerHTML = html;
+}
+
+function renderExitTable(st, model, wf){
+  const ids = holderOrder(model);
+  let html = `<tr><th>Shareholder</th><th>Final %</th><th>Invested</th><th>Exit proceeds</th><th>% of exit</th><th>Multiple</th><th>IRR p.a.</th></tr>`;
+  let tInv=0, tVal=0;
+  for (const id of ids){
+    const h = wf.holders[id];
+    const pill = h.type==='founder'?'<span class="pill f">F</span>':h.type==='esop'?'<span class="pill e">E</span>':'<span class="pill i">I</span>';
+    const flag = h.type==='investor' ? (h.participating?' · participating':(h.takesPref?' · took preference':' · converted')) : '';
+    tInv += h.invested||0; tVal += h.exitValue;
+    html += `<tr><td>${pill} ${esc(h.name)}<span style="color:var(--ink2);font-size:11px">${flag}</span></td>
+      <td>${fmtPct(h.pctFinal)}</td>
+      <td>${h.invested?fmtMoney(h.invested):'—'}</td>
+      <td><b>${fmtMoney(h.exitValue)}</b></td>
+      <td>${fmtPct(h.exitValue/st.exitVal*100)}</td>
+      <td>${fmtX(h.multiple)}</td>
+      <td>${h.irr!==null&&h.irr!==undefined?fmtPct(h.irr):'—'}</td></tr>`;
+  }
+  html += `<tr class="total"><td>Total</td><td></td><td>${fmtMoney(tInv)}</td><td>${fmtMoney(tVal)}</td><td>${fmtPct(tVal/st.exitVal*100,0)}</td><td></td><td></td></tr>`;
+  document.getElementById('exitTable').innerHTML = html;
+}
+
+function renderScenarios(st, model){
+  const vals = [
+    {label:'Downside', v:+document.getElementById('scenLow').value||0},
+    {label:'Base', v:+document.getElementById('scenBase').value||0},
+    {label:'Upside', v:+document.getElementById('scenHigh').value||0}
+  ];
+  const ids = holderOrder(model);
+  const wfs = vals.map(s=> waterfall(model, s.v, st.exitDate));
+  let html = '<tr><th>Shareholder</th>' + vals.map(s=>`<th>${s.label}<br><span style="font-weight:400">${fmtMoney(s.v)}</span></th>`).join('') + '</tr>';
+  for (const id of ids){
+    const name = wfs[1].holders[id].name;
+    html += `<tr><td>${esc(name)}</td>` + wfs.map(w=>{
+      const h = w.holders[id];
+      const mult = h.multiple ? ` <span style="color:var(--ink2);font-size:11px">(${fmtX(h.multiple)})</span>` : '';
+      return `<td>${fmtMoney(h.exitValue)}${mult}</td>`;
+    }).join('') + '</tr>';
+  }
+  document.getElementById('scenTable').innerHTML = html;
+}
+
+/* ============================================================
+   CHARTS
+============================================================ */
+function renderCharts(st, model, wf){
+  const ids = holderOrder(model);
+  const last = model.stages[model.stages.length-1];
+
+  // 1. Stacked bar — cap table evolution
+  destroy('stack');
+  charts.stack = new Chart(document.getElementById('chartStack'), {
+    type:'bar',
+    data:{
+      labels: model.stages.map(s=>s.label),
+      datasets: ids.map(id=>({
+        label: last.holders[id].name,
+        data: model.stages.map(s=> s.holders[id]? s.holders[id].pct : 0),
+        backgroundColor: last.holders[id].color, stack:'s'
+      }))
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{stacked:true,grid:{display:false}}, y:{stacked:true,max:100,ticks:{callback:v=>v+'%'}} },
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(1)}%`}} }
+    }
+  });
+
+  // 2. Sensitivity
+  const maxV = Math.max(st.exitVal*2.5, 50000000);
+  const steps = 60;
+  const xs = Array.from({length:steps+1},(_,i)=> maxV*i/steps);
+  const founderIds = founders.map(f=>f.id);
+  const series = {Founders:[], 'ESOP Pool':[], Investors:[]};
+  xs.forEach(v=>{
+    const w = waterfall(model, v, st.exitDate);
+    series.Founders.push(founderIds.reduce((s,id)=>s+(w.holders[id]?w.holders[id].exitValue:0),0));
+    series['ESOP Pool'].push(w.holders['ESOP']?w.holders['ESOP'].exitValue:0);
+    series.Investors.push(Object.values(w.holders).filter(h=>h.type==='investor').reduce((s,h)=>s+h.exitValue,0));
+  });
+  destroy('sens');
+  charts.sens = new Chart(document.getElementById('chartSens'), {
+    type:'line',
+    data:{ labels: xs,
+      datasets:[
+        {label:'Founders', data:series.Founders, borderColor:'#16365c', backgroundColor:'#16365c', pointRadius:0, borderWidth:2.5},
+        {label:'ESOP Pool', data:series['ESOP Pool'], borderColor:'#0e7c66', backgroundColor:'#0e7c66', pointRadius:0, borderWidth:2},
+        {label:'Investors', data:series.Investors, borderColor:'#2563eb', backgroundColor:'#2563eb', pointRadius:0, borderWidth:2}
+      ]},
+    options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+      scales:{ x:{type:'linear', ticks:{callback:v=>fmtMoney(v)}, grid:{display:false}}, y:{ticks:{callback:v=>fmtMoney(v)}} },
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{ title:items=>'Exit: '+fmtMoney(items[0].parsed.x), label:c=>`${c.dataset.label}: ${fmtMoney(c.parsed.y)}` }} }
+    }
+  });
+  charts.sens.data.datasets.forEach((ds,i)=>{ ds.data = ds.data.map((y,j)=>({x:xs[j],y})); });
+  charts.sens.update();
+
+  // 3. Donut — ownership at exit
+  destroy('donut');
+  charts.donut = new Chart(document.getElementById('chartDonut'), {
+    type:'doughnut',
+    data:{ labels: ids.map(id=>last.holders[id].name),
+      datasets:[{ data: ids.map(id=>last.holders[id].pct), backgroundColor: ids.map(id=>last.holders[id].color), borderWidth:1 }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'55%',
+      plugins:{ legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+        title:{display:true,text:'Fully diluted ownership (%)',font:{size:12}},
+        tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}} } }
+  });
+
+  // 4. Bars — exit proceeds
+  destroy('proceeds');
+  charts.proceeds = new Chart(document.getElementById('chartProceeds'), {
+    type:'bar',
+    data:{ labels: ids.map(id=>wf.holders[id].name),
+      datasets:[{ data: ids.map(id=>wf.holders[id].exitValue), backgroundColor: ids.map(id=>last.holders[id].color) }]},
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      scales:{ x:{ticks:{callback:v=>fmtMoney(v)}} },
+      plugins:{ legend:{display:false},
+        title:{display:true,text:'Exit proceeds',font:{size:12}},
+        tooltip:{callbacks:{label:c=>fmtMoney(c.parsed.x)}} } }
+  });
+}
+function destroy(k){ if(charts[k]){ charts[k].destroy(); delete charts[k]; } }
+
+/* ============================================================
+   BOOT
+============================================================ */
+document.getElementById('exitRange').addEventListener('input', e=>{
+  document.getElementById('exitVal').value = e.target.value; recalc();
+});
+document.getElementById('exitVal').addEventListener('change', e=>{
+  const v = +e.target.value;
+  const r = document.getElementById('exitRange');
+  if (v > +r.max) r.max = v*1.5;
+  r.value = Math.min(v, +r.max);
+  document.getElementById('scenBase').value = v;
+  document.getElementById('scenLow').value = Math.round(v*0.4);
+  document.getElementById('scenHigh').value = Math.round(v*2);
+  recalc();
+});
+['coName','currency','foundDate','startShares','esopPct','exitDate','scenLow','scenBase','scenHigh'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', recalc);
+});
+
+(function init(){
+  const v = +document.getElementById('exitVal').value;
+  document.getElementById('scenBase').value = v;
+  document.getElementById('scenLow').value = Math.round(v*0.4);
+  document.getElementById('scenHigh').value = Math.round(v*2);
+  renderFounders(); renderRounds(); recalc();
+})();
+</script>
+</body>
+</html>
